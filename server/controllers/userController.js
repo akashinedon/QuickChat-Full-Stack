@@ -34,6 +34,7 @@ export const signup = async (req, res)=>{
 }
 
 // Controller to login a user
+
 export const login = async (req, res) =>{
     try {
         const { email, password } = req.body;
