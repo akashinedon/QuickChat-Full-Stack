@@ -53,6 +53,21 @@ export const ChatProvider = ({ children })=>{
         }
     }
 
+    // --- NEW FUNCTION: Delete Message ---
+    const deleteMessage = async (messageId) => {
+        try {
+            // Optimistic Update: Remove from UI immediately
+            setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== messageId));
+            
+            const { data } = await axios.delete(`/api/messages/delete/${messageId}`);
+            if(!data.success){
+                toast.error(data.message);
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
+
     // function to subscribe to messages for selected user
     const subscribeToMessages = async () =>{
         if(!socket) return;
@@ -68,11 +83,19 @@ export const ChatProvider = ({ children })=>{
                 }))
             }
         })
+
+        // --- NEW LISTENER: Listen for Deleted Messages ---
+        socket.on("messageDeleted", (deletedMessageId) => {
+             setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== deletedMessageId));
+        });
     }
 
     // function to unsubscribe from messages
     const unsubscribeFromMessages = ()=>{
-        if(socket) socket.off("newMessage");
+        if(socket) {
+            socket.off("newMessage");
+            socket.off("messageDeleted"); // Clean up listener
+        }
     }
 
     useEffect(()=>{
@@ -81,7 +104,8 @@ export const ChatProvider = ({ children })=>{
     },[socket, selectedUser])
 
     const value = {
-        messages, users, selectedUser, getUsers, getMessages, sendMessage, setSelectedUser, unseenMessages, setUnseenMessages
+        messages, users, selectedUser, getUsers, getMessages, sendMessage, setSelectedUser, 
+        unseenMessages, setUnseenMessages, deleteMessage // Export new function
     }
 
     return (

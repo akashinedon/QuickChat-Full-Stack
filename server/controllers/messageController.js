@@ -93,3 +93,35 @@ export const sendMessage = async (req, res) =>{
         res.json({success: false, message: error.message})
     }
 }
+
+// --- NEW FUNCTION: Delete Message ---
+export const deleteMessage = async (req, res) => {
+    try {
+        const { id } = req.params; // Message ID
+        const userId = req.user._id; // Current User ID
+
+        // 1. Find the message
+        const message = await Message.findById(id);
+        if(!message) return res.status(404).json({success: false, message: "Message not found"});
+
+        // 2. Check if the user is the sender (Security Check)
+        if(message.senderId.toString() !== userId.toString()){
+            return res.status(403).json({success: false, message: "You can only delete your own messages"});
+        }
+
+        // 3. Delete the message
+        await Message.findByIdAndDelete(id);
+
+        // 4. Notify the receiver via Socket so their UI updates instantly
+        const receiverSocketId = userSocketMap[message.receiverId];
+        if (receiverSocketId){
+            io.to(receiverSocketId).emit("messageDeleted", id);
+        }
+
+        res.json({success: true, message: "Message deleted successfully"});
+
+    } catch (error) {
+        console.log("Error in deleteMessage:", error.message);
+        res.status(500).json({success: false, message: "Internal Server Error"});
+    }
+}
